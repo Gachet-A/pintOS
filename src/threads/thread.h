@@ -5,6 +5,20 @@
 #include <list.h>
 #include <stdint.h>
 
+/* Part 3*/
+#include "devices/timer.h"
+
+/* Part 3 declaration for fixed point calculations */
+typedef int fixed_point;
+
+#define SHIFT_AMOUNT 14
+#define FIXED_POINT_CONV(N) ((fixed_point)(N << SHIFT_AMOUNT))
+#define FIXED_POINT_ROUND(N) (N >= 0 ? ((N + (1 << (SHIFT_AMOUNT - 1))) >> SHIFT_AMOUNT) : ((N - (1 << (SHIFT_AMOUNT - 1))) >> SHIFT_AMOUNT))
+#define FIXED_POINT_ADD(A, B) (A + B)
+#define FIXED_POINT_SUB(A, B) (A - B)
+#define FIXED_POINT_MUL(A, B) (((int64_t)A) * B >> SHIFT_AMOUNT)
+#define FIXED_POINT_DIV(A, B) (((int64_t)A) * (1 << SHIFT_AMOUNT) / B)
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -92,7 +106,10 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     
-      int64_t local_tick;			/* Used for the sleep queue */
+    int64_t local_tick;			          /* Part 1 Used for the sleep queue */
+
+    int nice;                           /* Part 3 Niceness value for BSD scheduler */
+    fixed_point recent_cpu;             /* Part 3 Recent CPU usage for BSD scheduler */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -143,9 +160,16 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 
-/* Declare new functions in threads.c for sleep/wake-up function */
+/* Part 1 Declare new functions in threads.c for sleep/wake-up function */
 
 void thread_sleep(int64_t ticks);
 void thread_wakeup(int64_t ticks);
+
+/* Part 3 Delcare function for calculations */
+void calculate_load_avg(void);
+void calculate_recent_cpu(struct thread *t);
+void recalculate_recent_cpu(void);
+void update_priority(struct thread *t);
+void recalculate_priorities(void);
 
 #endif /* threads/thread.h */

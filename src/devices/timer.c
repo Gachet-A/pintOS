@@ -176,14 +176,29 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
-/* Timer interrupt handler. Added the thread wake-up to wake up any thread whose time to wake up came up */
+
+/* Timer interrupt handler */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  /* Call wake-up function with current ticks */
+
+  /* Part 3 when in mlfqs, calculate load_avg and recent_cpu every 100 ticks */
+  /*        recalculate priorities every 4 ticks */
+  if (thread_mlfqs) {
+    if (ticks % TIMER_FREQ == 0)
+    {
+      calculate_load_avg();
+      recalculate_recent_cpu();
+    }
+    if (ticks % 4 == 0)
+    {
+      recalculate_priorities();
+    }
+  }
+
+  /* Part 1 Call wake-up function with current ticks */
   thread_wakeup(ticks);
 }
 
