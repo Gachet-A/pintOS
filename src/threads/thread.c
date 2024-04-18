@@ -186,11 +186,10 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
-  
-  t->recent_cpu = FIXED_POINT_ADD(t->recent_cpu, 1);
 
   if (thread_mlfqs) 
   {
+    t->recent_cpu = FIXED_POINT_ADD(t->recent_cpu, 1);
     if (timer_ticks() % TIMER_FREQ == 0) 
     {
       calculate_load_avg();
@@ -430,33 +429,41 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
+  enum intr_level old_level = intr_disable ();
   struct thread *t = thread_current();
   t->nice = nice;
 
   if (thread_mlfqs) {
     update_priority(t);
   }
+  intr_set_level (old_level);
 }
 
 /* Part 3 Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
+  enum intr_level old_level = intr_disable ();
   return thread_current()->nice;
+  intr_set_level (old_level);
 }
 
 /* Part 3 Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
+  enum intr_level old_level = intr_disable ();
   return FIXED_POINT_ROUND(load_avg * 100);
+  intr_set_level (old_level);
 }
 
 /* Part 3 Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
+  enum intr_level old_level = intr_disable ();
   return FIXED_POINT_ROUND(thread_current()->recent_cpu * 100);
+  intr_set_level (old_level);
 }
 
 /* Part 3 Calculate the system's load average */
@@ -476,10 +483,12 @@ void
 calculate_recent_cpu (struct thread *t)
 {
   if (t == idle_thread)
-    return ;
-    /* Calculate new recent_cpu using fixed-point arithmetic */
-    t->recent_cpu = FIXED_POINT_ADD(FIXED_POINT_MUL(FIXED_POINT_DIV(FIXED_POINT_MUL(load_avg, 2), 
-                                    FIXED_POINT_ADD(FIXED_POINT_MUL(load_avg, 2), FIXED_POINT_CONV(1))), t->recent_cpu), t->nice);
+    return;
+  
+  int load_avg_times_2 = FIXED_POINT_MUL(load_avg, 2);
+  int coefficient = FIXED_POINT_DIV(load_avg_times_2, FIXED_POINT_ADD(load_avg_times_2, FIXED_POINT_CONV(1)));
+  
+  t->recent_cpu = FIXED_POINT_ADD(FIXED_POINT_MUL(coefficient, t->recent_cpu), t->nice);
 }
 
 /* Part 3 Update the recent_cpu of all threads */
@@ -503,7 +512,7 @@ update_priority(struct thread *t)
   if (t == idle_thread) 
     return;
   int new_priority;
-  new_priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2); // Compute new priority
+  new_priority = PRI_MAX - FIXED_POINT_DIV(t->recent_cpu, 4) - FIXED_POINT_MUL(t->nice, 2); // Compute new priority
 
   t->priority = new_priority; // Update the thread's priority
 }

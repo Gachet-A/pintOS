@@ -197,7 +197,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
       recalculate_priorities();
     }
   }
-
   /* Part 1 Call wake-up function with current ticks */
   thread_wakeup(ticks);
 }
